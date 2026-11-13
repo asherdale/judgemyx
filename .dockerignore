@@ -1,0 +1,9 @@
+node_modules
+.DS_Store
+.env
+.git
+data
+scripts
+run.sh
+Dockerfile
+fly.toml

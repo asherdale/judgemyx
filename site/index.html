@@ -1,0 +1,70 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Judge My 𝕏</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css">
+<style>
+.cta{display:flex;align-items:center;gap:24px;justify-content:space-between}
+.cta p{margin:0;line-height:1.6;font-size:16px;color:var(--soft)}
+.cta .btn{flex:none}
+.card{margin:28px 0}
+.card h2{margin-bottom:16px}
+.row .spinner{width:18px;height:18px;border-width:2px}
+.boardhead{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}
+.boardhead h2{margin:0}
+.search{display:flex;align-items:center;gap:8px;background:var(--fill);border:1px solid transparent;border-radius:999px;padding:0 14px;width:240px;color:var(--muted)}
+.search:focus-within{background:var(--card);border-color:var(--edge)}
+.search svg{width:16px;height:16px;flex:none}
+.search input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--fg);font-size:14px;padding:9px 0}
+.board-empty{margin:8px 0 4px;color:var(--soft);line-height:1.55}
+@media (max-width:600px){.cta{flex-direction:column;align-items:stretch}.cta .btn{text-align:center}.boardhead{flex-direction:column;align-items:stretch}.search{width:auto}}
+</style>
+</head><body><div class="wrap">
+<header><a class="logo" href="/">Judge My 𝕏</a><nav><a href="/how">How it works</a><!--REPO_NAV--><a href="https://www.omnara.com" target="_blank">Built on Omnara</a></nav></header>
+<h1>How good is your 𝕏 account, really?</h1>
+<p class="lede">An AI agent reads your last 200 posts, scores your account out of 10, and roasts you.</p>
+<section class="card cta">
+  <p>Reply to the post on 𝕏 and the agent replies with your score in about a minute. Tag a friend in your reply to rate them instead.</p>
+  <a class="btn" href="%LAUNCH_URL%" target="_blank">Get rated on 𝕏</a>
+</section>
+<section class="card" id="live" hidden><h2>Being rated now</h2><div id="liverows"></div></section>
+<section class="card"><div class="boardhead"><h2>Leaderboard</h2><label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Find an account" maxlength="30" autocomplete="off" spellcheck="false"></label></div><div id="board"><p class="muted">No accounts rated yet.</p></div></section>
+<footer>A side project by <a href="https://x.com/%X_HANDLE%" target="_blank">@%X_HANDLE%</a>. Each rating is done by its own AI agent on <a href="https://www.omnara.com" target="_blank">Omnara</a>. Not affiliated with X.</footer>
+</div>
+<script type="module">
+import { realName } from '/ui.js'
+const $ = (id) => document.getElementById(id)
+function row(r, rank, live) {
+  const a = document.createElement('a'); a.className = 'row'; a.href = `/@${r.handle}`
+  a.innerHTML = `<span class="rank">${rank}</span><img class="avatar" alt=""><span class="who"><b></b><span></span></span><span class="chip"></span>`
+  a.querySelector('img').src = r.avatar || ''
+  a.querySelector('.who b').textContent = realName(r.name, r.handle) ? `${r.name} @${r.handle}` : `@${r.handle}`
+  a.querySelector('.who span').textContent = live ? (r.status === 'queued' ? 'In line' : 'The agent is reading their posts. Watch live') : r.verdict
+  const chip = a.querySelector('.chip')
+  if (live) chip.innerHTML = '<span class="spinner"></span>'
+  else chip.textContent = r.score.toFixed(1)
+  return a
+}
+let timer
+function empty(q) {
+  const p = document.createElement('p'); p.className = 'board-empty'
+  if (!q) { p.textContent = 'No accounts rated yet.'; return p }
+  const a = document.createElement('a'); a.href = '%LAUNCH_URL%'; a.target = '_blank'; a.textContent = 'Reply to the post on 𝕏'
+  p.append(`@${q.replace(/^@/, '')} hasn’t been rated yet. `, a, ' to get rated.')
+  return p
+}
+async function load() {
+  clearTimeout(timer)
+  const q = $('q').value.trim()
+  const { rows, live } = await (await fetch(`/api/leaderboard?q=${encodeURIComponent(q)}`)).json()
+  if (q !== $('q').value.trim()) return
+  $('board').replaceChildren(...(rows.length ? rows.map((r) => row(r, r.rank)) : [empty(q)]))
+  $('live').hidden = !live.length
+  $('liverows').replaceChildren(...live.map((r) => row(r, '', true)))
+  timer = setTimeout(load, live.length ? 3000 : 15000)
+}
+let typing
+$('q').oninput = () => { clearTimeout(typing); typing = setTimeout(load, 200) }
+load()
+</script>
+</body></html>
